@@ -22,7 +22,8 @@ def inventory(item):
     start = time.time()
     logging.info(f"Checking inventory for {item}")
 
-    failure = random.choice([True, False])
+    # Fixed: Removed random failure injection that was causing 50% error rate
+    failure = False
 
     if failure:
         logging.error("Database Connection Timeout")
