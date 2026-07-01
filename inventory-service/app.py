@@ -22,20 +22,6 @@ def inventory(item):
     start = time.time()
     logging.info(f"Checking inventory for {item}")
 
-    failure = random.choice([True, False])
-
-    if failure:
-        logging.error("Database Connection Timeout")
-        logging.error("ConnectionPoolExhausted")
-        REQUEST_COUNT.labels('GET', '/inventory', '500').inc()
-        ERROR_COUNT.labels('ConnectionPoolExhausted').inc()
-        ERROR_COUNT.labels('DatabaseConnectionTimeout').inc()
-        REQUEST_LATENCY.observe(time.time() - start)
-        return jsonify({
-            "status": "error",
-            "message": "Inventory DB unavailable"
-        }), 500
-
     REQUEST_COUNT.labels('GET', '/inventory', '200').inc()
     REQUEST_LATENCY.observe(time.time() - start)
     return jsonify({
