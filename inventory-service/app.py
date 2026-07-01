@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, Response
 import logging
-import random
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import time
 
@@ -22,20 +21,12 @@ def inventory(item):
     start = time.time()
     logging.info(f"Checking inventory for {item}")
 
-    failure = random.choice([True, False])
-
-    if failure:
-        logging.error("Database Connection Timeout")
-        logging.error("ConnectionPoolExhausted")
-        REQUEST_COUNT.labels('GET', '/inventory', '500').inc()
-        ERROR_COUNT.labels('ConnectionPoolExhausted').inc()
-        ERROR_COUNT.labels('DatabaseConnectionTimeout').inc()
-        REQUEST_LATENCY.observe(time.time() - start)
-        return jsonify({
-            "status": "error",
-            "message": "Inventory DB unavailable"
-        }), 500
-
+    # NOTE: Previously this handler injected a hardcoded random failure
+    # (`random.choice([True, False])`) that unconditionally returned HTTP 500
+    # for ~50% of requests, emitting fake 'Database Connection Timeout' and
+    # 'ConnectionPoolExhausted' log lines. This simulated failure caused the
+    # HighErrorRate_InventoryService alert (INC0011683). Removed so requests
+    # are served deterministically.
     REQUEST_COUNT.labels('GET', '/inventory', '200').inc()
     REQUEST_LATENCY.observe(time.time() - start)
     return jsonify({
