@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, Response
 import logging
-import random
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import time
 
@@ -17,18 +16,26 @@ REQUEST_COUNT = Counter('inventory_requests_total', 'Total requests', ['method',
 ERROR_COUNT = Counter('inventory_errors_total', 'Total errors', ['error_type'])
 REQUEST_LATENCY = Histogram('inventory_request_latency_seconds', 'Request latency')
 
+
+def fetch_stock(item):
+    """Fetch stock for an item from the inventory datastore.
+
+    Replace this stub with the real database/repository lookup. It must
+    return an integer stock level or raise on a genuine data-access error.
+    """
+    return 10
+
+
 @app.route("/inventory/<item>")
 def inventory(item):
     start = time.time()
     logging.info(f"Checking inventory for {item}")
 
-    failure = random.choice([True, False])
-
-    if failure:
-        logging.error("Database Connection Timeout")
-        logging.error("ConnectionPoolExhausted")
+    try:
+        stock = fetch_stock(item)
+    except Exception as exc:
+        logging.error(f"Database Connection Timeout: {exc}")
         REQUEST_COUNT.labels('GET', '/inventory', '500').inc()
-        ERROR_COUNT.labels('ConnectionPoolExhausted').inc()
         ERROR_COUNT.labels('DatabaseConnectionTimeout').inc()
         REQUEST_LATENCY.observe(time.time() - start)
         return jsonify({
@@ -40,16 +47,19 @@ def inventory(item):
     REQUEST_LATENCY.observe(time.time() - start)
     return jsonify({
         "item": item,
-        "stock": 10
+        "stock": stock
     })
+
 
 @app.route("/health")
 def health():
     return jsonify({"status": "healthy"})
 
+
 @app.route("/metrics")
 def metrics():
     return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
