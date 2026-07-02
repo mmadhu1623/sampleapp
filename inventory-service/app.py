@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, Response
 import logging
-import random
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import time
 
@@ -22,26 +21,24 @@ def inventory(item):
     start = time.time()
     logging.info(f"Checking inventory for {item}")
 
-    failure = random.choice([True, False])
-
-    if failure:
-        logging.error("Database Connection Timeout")
-        logging.error("ConnectionPoolExhausted")
+    try:
+        # Normal inventory lookup path.
+        stock = 10
+        REQUEST_COUNT.labels('GET', '/inventory', '200').inc()
+        REQUEST_LATENCY.observe(time.time() - start)
+        return jsonify({
+            "item": item,
+            "stock": stock
+        })
+    except Exception as exc:
+        logging.error(f"Inventory lookup failed: {exc}")
         REQUEST_COUNT.labels('GET', '/inventory', '500').inc()
-        ERROR_COUNT.labels('ConnectionPoolExhausted').inc()
-        ERROR_COUNT.labels('DatabaseConnectionTimeout').inc()
+        ERROR_COUNT.labels('InventoryLookupError').inc()
         REQUEST_LATENCY.observe(time.time() - start)
         return jsonify({
             "status": "error",
             "message": "Inventory DB unavailable"
         }), 500
-
-    REQUEST_COUNT.labels('GET', '/inventory', '200').inc()
-    REQUEST_LATENCY.observe(time.time() - start)
-    return jsonify({
-        "item": item,
-        "stock": 10
-    })
 
 @app.route("/health")
 def health():
